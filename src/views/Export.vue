@@ -26,8 +26,8 @@
                     required
                     v-model="exportOption.events"
                     :items="fixedEvents"
-                    item-text="displayName"
-                    item-value="eventName"
+                    item-text="cdNm"
+                    item-value="cdNm"
                     label="Events"
                     clearable
                     deletable-chips
@@ -42,7 +42,7 @@
 
               <v-flex md6>
                 <v-card-text class="pb-0">
-                  <v-combobox
+                  <v-select
                     required
                     v-model="exportOption.genders"
                     :items="genders"
@@ -57,7 +57,7 @@
                     :error-messages="genderErrors"
                     @input="$v.exportOption.genders.$touch()"
                     @blur="$v.exportOption.genders.$touch()"
-                  ></v-combobox>
+                  ></v-select>
                 </v-card-text>
               </v-flex>
               <v-flex md6>
@@ -79,7 +79,7 @@
               <v-flex md6>
                 <v-card-text class="pb-0">
                   <v-menu
-                    v-model="startPicker"
+                    v-model="rangeStartDateTime"
                     :close-on-content-click="false"
                     :nudge-right="40"
                     lazy
@@ -90,21 +90,21 @@
                   >
                     <template v-slot:activator="{ on }">
                       <v-text-field
-                        v-model="exportOption.startDate"
+                        v-model="exportOption.rangeStartDateTime"
                         label="Range of inspection start date start"
                         prepend-icon="event"
                         readonly
                         v-on="on"
                       ></v-text-field>
                     </template>
-                    <v-date-picker v-model="exportOption.startDate" @input="startPicker = false"></v-date-picker>
+                    <v-date-picker v-model="exportOption.rangeStartDateTime" @input="startPicker = false"></v-date-picker>
                   </v-menu>
                 </v-card-text>
               </v-flex>
               <v-flex md6>
                 <v-card-text class="pb-0">
                   <v-menu
-                    v-model="endPicker"
+                    v-model="rangeEndDateTime"
                     :close-on-content-click="false"
                     :nudge-right="40"
                     lazy
@@ -115,14 +115,14 @@
                   >
                     <template v-slot:activator="{ on }">
                       <v-text-field
-                        v-model="exportOption.endDate"
+                        v-model="exportOption.rangeEndDateTime"
                         label="Range of inspection start date end"
                         prepend-icon="event"
                         readonly
                         v-on="on"
                       ></v-text-field>
                     </template>
-                    <v-date-picker v-model="exportOption.endDate" @input="endPicker = false"></v-date-picker>
+                    <v-date-picker v-model="exportOption.rangeEndDateTime" @input="endPicker = false"></v-date-picker>
                   </v-menu>
                 </v-card-text>
               </v-flex>
@@ -144,7 +144,6 @@
                     v-model="exportOption.justDeleted"
                     label="Search Just deleted."
                     color="orange darken-3"
-                    value="orange darken-3"
                     hide-details
                   ></v-checkbox>
                 </v-card-text>
@@ -152,7 +151,7 @@
               <v-flex md12>
                 <v-card-actions>
                   <v-spacer></v-spacer>
-                  <v-btn flat color="orange" @click="submit">CHECK</v-btn>
+                  <v-btn flat color="orange" @click="submit" :loading="loading" :disabled="loading">REQUEST</v-btn>
                 </v-card-actions>
               </v-flex>
             </v-layout>
@@ -196,79 +195,23 @@ export default {
   },
   data () {
     return {
-      startPicker: false,
-      endPicker: false,
-      fixedEvents: [
-        { eventName: 'AFib normal', displayName: 'AFib nor' },
-        { eventName: 'SVTA', displayName: 'SVTA' },
-        { eventName: 'Pause', displayName: 'Pause' },
-        { eventName: 'AFib slow', displayName: 'AFib slow' },
-        { eventName: 'PVC', displayName: 'PVC' },
-        { eventName: 'SVC', displayName: 'SVC' }
-      ],
-      hospitals: [
-        {
-          'hospitalSequenceNumber': 1,
-          'name': '삼성서울병원test'
-        },
-        {
-          'hospitalSequenceNumber': 5,
-          'name': '최고병원'
-        },
-        {
-          'hospitalSequenceNumber': 6,
-          'name': '삼성전자'
-        },
-        {
-          'hospitalSequenceNumber': 7,
-          'name': 'NBNL'
-        },
-        {
-          'hospitalSequenceNumber': 8,
-          'name': '삼성서울병원_임상전'
-        },
-        {
-          'hospitalSequenceNumber': 9,
-          'name': '삼성서울(SMC)'
-        },
-        {
-          'hospitalSequenceNumber': 10,
-          'name': '부천순천향(SCH)'
-        },
-        {
-          'hospitalSequenceNumber': 11,
-          'name': '서울성모(CMC)'
-        },
-        {
-          'hospitalSequenceNumber': 12,
-          'name': '삼성전자UT'
-        },
-        {
-          'hospitalSequenceNumber': 13,
-          'name': '서울대(SNUH)'
-        },
-        {
-          'hospitalSequenceNumber': 14,
-          'name': 'SQE_sample'
-        },
-        {
-          'hospitalSequenceNumber': 15,
-          'name': 'HQE_sample'
-        },
-        {
-          'hospitalSequenceNumber': 16,
-          'name': '파트론'
-        }
-      ],
+      rangeStartDateTime: false,
+      rangeEndDateTime: false,
+      fixedEvents: [],
+      hospitals: [],
+      loading: false,
       genders: [
         { text: 'MALE', value: 'M' },
         { text: 'FEMALE', value: 'F' }
       ],
       exportOption: {
+        genders: [],
         justDeleted: false,
         deviceId: '',
         events: [],
-        duration: 2
+        duration: 2,
+        rangeEndDateTime: '',
+        rangeStartDateTime: ''
       }
     }
   },
@@ -286,11 +229,36 @@ export default {
       return errors
     }
   },
+  created () {
+    this.$axios.get('/code/evs').then((res) => {
+      this.fixedEvents = this.$_.filter(res.data, (e) => e.cdAttr === 'EVT')
+    })
+    this.$axios.get('/hospitals').then((res) => {
+      this.hospitals = res.data
+    })
+  },
   methods: {
     submit () {
       this.$v.$touch()
       if (!this.$v.$error) {
-        console.log('Submit!!')
+        this.loading = true
+        console.log(this.exportOption)
+        this.$axios.post('/export/request', this.exportOption).then((res) => {
+          console.log(res)
+          this.$v.$reset()
+          this.exportOption.genders = []
+          this.exportOption.hospitals = []
+          this.exportOption.justDeleted = false
+          this.exportOption.deviceId = ''
+          this.exportOption.events = []
+          this.exportOption.duration = 2
+          this.exportOption.rangeStartDateTime = ''
+          this.exportOption.rangeEndDateTime = ''
+          this.loading = false
+        }).catch((error) => {
+          console.log(error)
+          this.loading = false
+        })
       }
     }
   }

@@ -347,7 +347,8 @@ export default {
   methods: {
     async load () {
       this.loading = true
-      const response = await this.$axios.get('http://cardian.nbnl.co/api/v/summary')
+      // const response = await this.$axios.get('http://cardian.nbnl.co/api/v/summary')
+      const response = await this.$axios.get('/summary')
       this.items = response.data
       this.loading = false
     },

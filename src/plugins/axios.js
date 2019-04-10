@@ -7,9 +7,12 @@ import axios from 'axios'
 // axios.defaults.baseURL = process.env.baseURL || process.env.apiUrl || '';
 // axios.defaults.headers.common['Authorization'] = AUTH_TOKEN;
 // axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
+const isDevelopment = process.env.NODE_ENV !== 'production'
+let base = isDevelopment ? 'http://localhost:8080/api/v' : 'http://cardian.nbnl.co/api/v'
 
 let config = {
   // baseURL: process.env.baseURL || process.env.apiUrl || ""
+  baseURL: base
   // timeout: 60 * 1000, // Timeout
   // withCredentials: true, // Check cross-site Access-Control
 }
