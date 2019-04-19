@@ -2,8 +2,7 @@
   <v-app id="wrapper">
 
     <v-navigation-drawer v-model="drawer"
-                         fixed
-                         clipped
+                         temporary
                          class="grey lighten-4"
                          app>
       <v-list>
@@ -79,4 +78,6 @@ export default {
   #wrapper
     .v-navigation-drawer__border
       display: none
+  .container
+      max-width : 99vw !important
 </style>
