@@ -1,5 +1,5 @@
 <template xmlns:v-slot="http://www.w3.org/1999/XSL/Transform">
-  <v-container ma-0 row >
+  <v-container ma-0 row>
     <v-layout>
       <v-flex>
         <h1 class="headline font-weight-bold mb-3">
@@ -52,6 +52,7 @@ const electron = require('electron').remote
 const dialog = electron.dialog
 const app = electron.app
 const fs = require('fs')
+
 export default {
   name: 'Summaries',
   data () {

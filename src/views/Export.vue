@@ -169,6 +169,7 @@
             <v-card>
               <v-layout row wrap md12>
                 <v-flex>
+                  <v-btn block color="primary" dark :loading="loading2" @click="load">Reload</v-btn>
                   <div>
                     <v-data-table
                       :headers="headers"
@@ -187,8 +188,14 @@
                         <td class="text-xs-center">{{ props.item.duration }} Sec</td>
                         <td class="text-xs-center">{{ props.item.count }}</td>
                         <td class="justify-center layout px-0">
-                          <v-btn color="primary" fab small @click="run(props.item)">
+                          <v-btn color="accent" fab small @click="run(props.item)" v-if="props.item.status === 'REQ'">
                             <v-icon >play_arrow</v-icon>
+                          </v-btn>
+                          <v-btn color="secondary" fab small v-else-if="props.item.status === 'PROC'">
+                            <v-icon >cached</v-icon>
+                          </v-btn>
+                          <v-btn color="primary" fab small @click="down(props.item)" v-else>
+                            <v-icon >cloud_download</v-icon>
                           </v-btn>
                           <v-btn color="error" fab small @click="deleteItem(props.item)">
                             <v-icon>delete</v-icon>
@@ -209,6 +216,11 @@
 <script>
 import { validationMixin } from 'vuelidate'
 import { required } from 'vuelidate/lib/validators'
+import { ipcRenderer, remote } from 'electron'
+import path from 'path'
+
+const dialog = remote.dialog
+const app = remote.app
 
 export default {
   name: 'Export',
@@ -228,6 +240,8 @@ export default {
       fixedEvents: [],
       hospitals: [],
       loading: false,
+      loading2: false,
+      publicPath: process.env.NODE_ENV === 'production' ? 'http://cardian.nbnl.co/api/v' : 'http://localhost:8080/api/v',
       headers: [
         { align: 'center', text: 'Events', value: 'eventString' },
         { align: 'center', text: 'Hospital', value: 'hospitalString' },
@@ -254,11 +268,6 @@ export default {
       }
     }
   },
-  watch: {
-    pagination (v) {
-      console.log(v)
-    }
-  },
   computed: {
     pages () {
       if (this.pagination.rowsPerPage == null ||
@@ -282,9 +291,7 @@ export default {
     }
   },
   created () {
-    this.$axios.get('/export/request').then((res) => {
-      this.requests = res.data
-    })
+    this.load()
     this.$axios.get('/code/evs').then((res) => {
       this.fixedEvents = this.$_.filter(res.data, (e) => e.cdAttr === 'EVT')
     })
@@ -293,13 +300,21 @@ export default {
     })
   },
   methods: {
+    load () {
+      console.log(this.publicPath)
+      this.loading2 = true
+      this.$axios.get('/export/request').then((res) => {
+        this.requests = res.data
+        this.loading2 = false
+      })
+    },
     submit () {
       this.$v.$touch()
       if (!this.$v.$error) {
         this.loading = true
         console.debug(this.exportOption)
         this.$axios.post('/export/request', this.exportOption).then((res) => {
-          console.debug(res)
+          res.data.status = 'REQ'
           this.requests.push(res.data)
           this.$v.$reset()
           this.exportOption.genders = []
@@ -316,12 +331,39 @@ export default {
         })
       }
     },
-    run (item) {
-      console.log(item.sequence)
+    async run (item) {
+      let param = Object.assign({}, item)
+      param.status = 'PROC'
+      await this.$axios.put('/export/request', param)
+      item.status = 'PROC'
+    },
+    async down (item) {
+      let toLocalPath = path.resolve(app.getPath('downloads'), path.basename('download-' + item.sequence + '.zip'))
+      let userChosenPath = dialog.showSaveDialog({ defaultPath: toLocalPath })
+      ipcRenderer.send('download', {
+        url: this.publicPath + '/export/request/' + item.sequence,
+        properties: {
+          directory: path.dirname(userChosenPath),
+          filename: path.basename(userChosenPath),
+          onProgress: this.progress
+        }
+      })
+      ipcRenderer.on('download progress', (event, progress) => {
+        const progressInPercentages = progress * 100 // With decimal point and a bunch of numbers
+        const cleanProgressInPercentages = Math.floor(progress * 100) // Without decimal point
+        console.log(progressInPercentages, cleanProgressInPercentages)
+      })
+      ipcRenderer.on('download complete', (event, file) => {
+        alert('File successfully downloaded.')
+      })
     },
     deleteItem (item) {
-      console.log(item.sequence)
+      this.$axios.delete('/export/request/' + item.sequence).then(() => {
+        const index = this.requests.indexOf(item)
+        confirm('Are you sure you want to delete this item?') && this.requests.splice(index, 1)
+      })
     }
+
   }
 }
 </script>

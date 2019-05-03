@@ -1,16 +1,19 @@
 'use strict'
 
-import { app, protocol, BrowserWindow } from 'electron'
+import { app, protocol, BrowserWindow, ipcMain } from 'electron'
+import { download } from 'electron-dl'
 import {
   createProtocol,
   installVueDevtools
 } from 'vue-cli-plugin-electron-builder/lib'
+
 const isDevelopment = process.env.NODE_ENV !== 'production'
+const electronDl = require('electron-dl')
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let win
-
+electronDl()
 // Standard scheme must be registered before the app is ready
 protocol.registerStandardSchemes(['app'], { secure: true })
 function createWindow () {
@@ -62,6 +65,12 @@ app.on('ready', async () => {
     }
   }
   createWindow()
+
+  ipcMain.on('download', (event, info) => {
+    info.properties.onProgress = status => win.webContents.send('download progress', status)
+    download(BrowserWindow.getFocusedWindow(), info.url, info.properties)
+      .then(dl => win.webContents.send('download complete', dl.getSavePath()))
+  })
 })
 
 // Exit cleanly on request from parent process in development mode.

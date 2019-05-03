@@ -43,10 +43,10 @@ export default {
     return {
       drawer: true,
       items: [
-        { icon: 'dashboard', title: 'Home', link: '/' },
+        // { icon: 'dashboard', title: 'Home', link: '/' },
         { icon: 'file_copy', title: 'Summaries', link: '/summaries' },
-        { icon: 'cloud_download', title: 'Export', link: '/export' },
-        { icon: 'question_answer', title: 'About', link: '/about' }
+        { icon: 'cloud_download', title: 'Export', link: '/export' }
+        // { icon: 'question_answer', title: 'About', link: '/about' }
       ]
     }
   }

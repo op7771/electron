@@ -1,6 +1,5 @@
 import Vue from 'vue'
 import Router from 'vue-router'
-import Home from './views/Home.vue'
 import Summaries from './views/Summaries.vue'
 import Export from './views/Export.vue'
 
@@ -13,7 +12,7 @@ export default new Router({
     {
       path: '/',
       name: 'home',
-      component: Home
+      component: Summaries
     },
     {
       path: '/summaries',
