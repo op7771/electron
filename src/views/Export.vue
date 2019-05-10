@@ -128,7 +128,7 @@
 
                   <v-flex md5>
                     <v-card-text class="pb-0">
-                      <v-text-field label="Device ID" v-model="exportOption.deviceId"></v-text-field>
+                      <v-text-field label="Device ID" v-model="exportOption.deviceIds"></v-text-field>
                     </v-card-text>
                   </v-flex>
                   <v-flex md5>
@@ -174,13 +174,14 @@
                     <v-data-table
                       :headers="headers"
                       :items="requests"
+                      :rows-per-page-items="rows"
                       class="elevation-1"
                     >
                       <template v-slot:items="props">
                         <td class="text-xs-center">{{ props.item.eventString }}</td>
                         <td class="text-xs-center">{{ props.item.hospitalString }}</td>
-                        <td class="text-xs-center">{{ props.item.genderString }}</td>
-                        <td class="text-xs-center">{{ props.item.deviceId }}</td>
+                        <td class="text-xs-center">{{ props.item.genders | arrayToString }}</td>
+                        <td class="text-xs-center">{{ props.item.deviceIds | arrayToString }}</td>
                         <td class="text-xs-center">
                           <v-switch value color="warning" :input-value="props.item.justDeleted"
                                     class="eventNone justify-center"/>
@@ -234,6 +235,7 @@ export default {
   },
   data () {
     return {
+      rows: [5, 10, 25, { 'text': '$vuetify.dataIterator.rowsPerPageAll', 'value': -1 }],
       panel: [true, false],
       rangeStartDateTime: false,
       rangeEndDateTime: false,
@@ -246,7 +248,7 @@ export default {
         { align: 'center', text: 'Events', value: 'eventString' },
         { align: 'center', text: 'Hospital', value: 'hospitalString' },
         { align: 'center', text: 'Gender', value: 'genderString' },
-        { align: 'center', text: 'DeviceId', value: 'deviceId' },
+        { align: 'center', text: 'DeviceId', value: 'deviceIds' },
         { align: 'center', text: 'Just Deleted', value: 'justDeleted' },
         { align: 'center', text: 'Duration', value: 'duration' },
         { align: 'center', text: 'Counts', value: 'count' },
@@ -260,7 +262,7 @@ export default {
       exportOption: {
         genders: [],
         justDeleted: false,
-        deviceId: '',
+        deviceIds: '',
         events: [],
         duration: 2,
         rangeEndDateTime: '',
@@ -285,7 +287,9 @@ export default {
     },
     genderErrors () {
       const errors = []
-      if (!this.$v.exportOption.$dirty) return errors
+      if (!this.$v.exportOption.$dirty) {
+        return errors
+      }
       !this.$v.exportOption.genders.required && errors.push('Gender is required')
       return errors
     }
@@ -299,9 +303,13 @@ export default {
       this.hospitals = res.data
     })
   },
+  filters: {
+    arrayToString (arr) {
+      return arr.toString()
+    }
+  },
   methods: {
     load () {
-      console.log(this.publicPath)
       this.loading2 = true
       this.$axios.get('/export/request').then((res) => {
         this.requests = res.data
@@ -312,15 +320,16 @@ export default {
       this.$v.$touch()
       if (!this.$v.$error) {
         this.loading = true
-        console.debug(this.exportOption)
+        this.exportOption.deviceIds = this.exportOption.deviceIds.split(',').map(item => item.trim())
         this.$axios.post('/export/request', this.exportOption).then((res) => {
           res.data.status = 'REQ'
+          // res.data.deviceIds = res.data.deviceIds.toString()
           this.requests.push(res.data)
           this.$v.$reset()
           this.exportOption.genders = []
           this.exportOption.hospitals = []
           this.exportOption.justDeleted = false
-          this.exportOption.deviceId = ''
+          this.exportOption.deviceIds = ''
           this.exportOption.events = []
           this.exportOption.duration = 2
           this.exportOption.rangeStartDateTime = ''
@@ -340,20 +349,22 @@ export default {
     async down (item) {
       let toLocalPath = path.resolve(app.getPath('downloads'), path.basename('download-' + item.sequence + '.zip'))
       let userChosenPath = dialog.showSaveDialog({ defaultPath: toLocalPath })
+
       ipcRenderer.send('download', {
         url: this.publicPath + '/export/request/' + item.sequence,
         properties: {
           directory: path.dirname(userChosenPath),
           filename: path.basename(userChosenPath),
-          onProgress: this.progress
+          openFolderWhenDone: true
         }
       })
       ipcRenderer.on('download progress', (event, progress) => {
-        const progressInPercentages = progress * 100 // With decimal point and a bunch of numbers
-        const cleanProgressInPercentages = Math.floor(progress * 100) // Without decimal point
-        console.log(progressInPercentages, cleanProgressInPercentages)
+        console.log(progress)
+        // const progressInPercentages = progress * 100 // With decimal point and a bunch of numbers
+        // const cleanProgressInPercentages = Math.floor(progress * 100) // Without decimal point
+        // console.log(progressInPercentages, cleanProgressInPercentages)
       })
-      ipcRenderer.on('download complete', (event, file) => {
+      ipcRenderer.on('download complete', (event, dl) => {
         alert('File successfully downloaded.')
       })
     },

@@ -45,7 +45,8 @@ export default {
       items: [
         // { icon: 'dashboard', title: 'Home', link: '/' },
         { icon: 'file_copy', title: 'Summaries', link: '/summaries' },
-        { icon: 'cloud_download', title: 'Export', link: '/export' }
+        { icon: 'cloud_download', title: 'Export', link: '/export' },
+        { icon: 'waves', title: 'Wave', link: '/wave' }
         // { icon: 'question_answer', title: 'About', link: '/about' }
       ]
     }

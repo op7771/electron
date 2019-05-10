@@ -1,6 +1,6 @@
 'use strict'
 
-import { app, protocol, BrowserWindow, ipcMain } from 'electron'
+import { app, protocol, BrowserWindow, ipcMain, dialog } from 'electron'
 import { download } from 'electron-dl'
 import {
   createProtocol,
@@ -18,7 +18,7 @@ electronDl()
 protocol.registerStandardSchemes(['app'], { secure: true })
 function createWindow () {
   // Create the browser window.
-  win = new BrowserWindow({ width: 800, height: 600 })
+  win = new BrowserWindow({ width: 1200, height: 900 })
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
@@ -66,10 +66,18 @@ app.on('ready', async () => {
   }
   createWindow()
 
-  ipcMain.on('download', (event, info) => {
-    info.properties.onProgress = status => win.webContents.send('download progress', status)
-    download(BrowserWindow.getFocusedWindow(), info.url, info.properties)
-      .then(dl => win.webContents.send('download complete', dl.getSavePath()))
+  ipcMain.on('download', async (event, info) => {
+    const downloadItem = await download(BrowserWindow.getFocusedWindow(), info.url, info.properties)
+    console.log(downloadItem)
+    win.webContents.send('download complete', downloadItem)
+  })
+
+  ipcMain.on('open-directory-dialog', (event) => {
+    dialog.showOpenDialog(BrowserWindow.getFocusedWindow(), { properties: ['openDirectory'] }, (files) => {
+      if (files) {
+        event.sender.send('selected-directory', files)
+      }
+    })
   })
 })
 
